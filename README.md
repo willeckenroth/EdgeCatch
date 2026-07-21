@@ -3,10 +3,11 @@
 Edge Catch is a human-in-the-loop tool for proposing and validating valuable
 edge-case tests in trusted Python repositories that use pytest.
 
-The project is at the package-skeleton stage. The analysis, AI proposal, and
-validation pipeline described in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) is not
-implemented yet. The binding delivery requirements are in
-[`CONTRACT.md`](CONTRACT.md).
+The project is at the early walking-skeleton stage. Repository configuration,
+command evidence capture, explicit AST target extraction, and recorded proposal
+parsing are implemented. Coverage analysis, live AI calls, candidate validation,
+and final reporting are not implemented yet. The binding delivery requirements
+are in [`CONTRACT.md`](CONTRACT.md).
 
 ## Development setup
 

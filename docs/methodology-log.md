@@ -31,4 +31,23 @@ correct by default.
   killed, reducing the chance of child processes surviving the timeout.
 - Focused tests exercise successful execution, nonzero exit, timeout, missing
   executable, valid configuration, and rejected unsafe configuration shapes.
-- Human review and teach-back of this slice are pending.
+- Will completed the runner teach-back on July 21, correctly distinguishing
+  configuration validation, direct argument-array execution, nonzero exits,
+  launch errors, timeouts, and higher-level policy decisions.
+
+## 2026-07-21: explicit AST target and recorded proposal boundary
+
+- Codex drafted a bounded slice that extracts one explicitly named function
+  with the standard-library AST and validates a recorded JSON proposal.
+- AST extraction records exact source boundaries, signature, docstring, and
+  qualified name. It does not yet rank functions or interpret coverage.
+- Proposal parsing requires the agreed fields and preserves the exact raw
+  response. It does not parse, run, repair, or approve the candidate test.
+- The first focused test run exposed that `ast.unparse` normalizes signature
+  spacing and quote style. The exact source remains separately preserved; the
+  signature test was corrected to verify the intentional canonical form.
+- A non-isolated package build failed because the development environment does
+  not contain its own copy of setuptools. The normal isolated build initially
+  hit the execution sandbox's network restriction, then succeeded with approved
+  access and included both new modules in the source and wheel distributions.
+- Human review, focused verification, and teach-back of this slice are pending.

@@ -51,3 +51,14 @@ correct by default.
   hit the execution sandbox's network restriction, then succeeded with approved
   access and included both new modules in the source and wheel distributions.
 - Human review, focused verification, and teach-back of this slice are pending.
+
+## 2026-07-21: exact temporary repository preparation
+
+- Will completed the AST/proposal teach-back before repository preparation
+  began.
+- Codex drafted a context-managed repository boundary that accepts an existing
+  local directory or HTTPS GitHub URL plus a full commit identifier.
+- Preparation creates an independent clone, checks out the requested commit,
+  verifies the resolved commit, preserves each Git command result, and removes
+  the workspace when its context ends.
+- Focused verification and human review of this slice are pending.

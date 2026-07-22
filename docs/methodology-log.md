@@ -63,6 +63,32 @@ correct by default.
   the workspace when its context ends.
 - Focused verification and human review of this slice are pending.
 
+## 2026-07-22: deterministic recorded-proposal pipeline
+
+- Will completed the report data-flow teach-back before pipeline composition.
+- The first vertical pipeline intentionally uses the current Python environment
+  and a recorded proposal. Dedicated target environments, coverage, and live
+  model calls remain explicit missing stages rather than implied features.
+- Candidate code is parsed before writing, collected and run separately, then
+  followed by the full suite and one repeat only while prior checks succeed.
+- The candidate is written only inside the temporary clone. The integration
+  fixture verifies the original repository never receives the candidate file.
+- Malformed model JSON and invalid candidate syntax are preserved and classified
+  as invalid generation rather than repaired or discarded.
+- The first CLI smoke command omitted virtual-environment activation, so the
+  shell could not locate `edge-catch`. Invoking `.venv/bin/edge-catch` directly
+  succeeded and displayed both top-level and `analyze` help.
+- The README explicitly warns that a recorded proposal becomes executable code;
+  a temporary clone protects the original checkout but is not an operating-
+  system sandbox.
+- Review found that the first pipeline draft combined orchestration and
+  candidate execution. Candidate parsing and execution moved to `validation.py`
+  so `pipeline.py` remains responsible for stage order and evidence assembly.
+- Automatic classification is limited to objective invalid-generation and
+  launch/timeout outcomes. Passing or behaviorally failing candidates remain
+  unreviewed until Will defines and applies the oracle policy.
+- Focused verification and human review of this slice are pending.
+
 ## 2026-07-22: versioned evidence reports
 
 - Will completed the exact-commit temporary-repository teach-back before report

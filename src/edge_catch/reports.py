@@ -61,7 +61,9 @@ class ProposalEvidence:
     model: str
     prompt_version: str
     prompt: str
-    proposal: Proposal
+    raw_response: str
+    parse_error: str | None
+    proposal: Proposal | None
 
 
 @dataclass(frozen=True)
@@ -184,39 +186,46 @@ def render_markdown(report: AnalysisReport) -> str:
         )
 
     if report.proposal is not None:
-        proposal = report.proposal
+        evidence = report.proposal
         lines.extend(
             [
                 "",
                 "## Unvalidated AI proposal",
                 "",
-                f"- Provider: `{proposal.provider}`",
-                f"- Model: `{proposal.model}`",
-                f"- Prompt version: `{proposal.prompt_version}`",
-                f"- Hypothesis: {proposal.proposal.hypothesis}",
-                f"- Expected behavior: {proposal.proposal.expected_behavior}",
-                f"- Rationale: {proposal.proposal.rationale}",
-                "",
-                "### Assumptions",
-                "",
-                *(
-                    f"- {assumption}"
-                    for assumption in proposal.proposal.assumptions
-                ),
+                f"- Provider: `{evidence.provider}`",
+                f"- Model: `{evidence.model}`",
+                f"- Prompt version: `{evidence.prompt_version}`",
+                f"- Parse error: `{evidence.parse_error}`",
                 "",
                 "### Prompt",
                 "",
-                _indent(proposal.prompt),
-                "",
-                "### Candidate test",
-                "",
-                _indent(proposal.proposal.test_code),
+                _indent(evidence.prompt),
                 "",
                 "### Raw model response",
                 "",
-                _indent(proposal.proposal.raw_response),
+                _indent(evidence.raw_response),
             ]
         )
+        if evidence.proposal is not None:
+            proposal = evidence.proposal
+            lines.extend(
+                [
+                    "",
+                    "### Parsed proposal",
+                    "",
+                    f"- Hypothesis: {proposal.hypothesis}",
+                    f"- Expected behavior: {proposal.expected_behavior}",
+                    f"- Rationale: {proposal.rationale}",
+                    "",
+                    "#### Assumptions",
+                    "",
+                    *(f"- {assumption}" for assumption in proposal.assumptions),
+                    "",
+                    "#### Candidate test",
+                    "",
+                    _indent(proposal.test_code),
+                ]
+            )
 
     if report.validation is not None:
         validation = report.validation

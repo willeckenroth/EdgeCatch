@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from edge_catch.reports import AnalysisReport, RepositoryEvidence, write_reports
+from edge_catch.reports import (
+    AnalysisReport,
+    ProposalEvidence,
+    RepositoryEvidence,
+    write_reports,
+)
 from edge_catch.runner import CommandResult
 
 
@@ -31,7 +36,15 @@ def test_writes_versioned_json_and_markdown(tmp_path: Path) -> None:
         ),
         baseline=None,
         target=None,
-        proposal=None,
+        proposal=ProposalEvidence(
+            provider="recorded",
+            model="fixture-model",
+            prompt_version="walking-skeleton-v1",
+            prompt="Return JSON.",
+            raw_response="not JSON",
+            parse_error="proposal is not valid JSON",
+            proposal=None,
+        ),
         validation=None,
         classification="environmental failure",
         human_review_status="unreviewed",
@@ -52,3 +65,5 @@ def test_writes_versioned_json_and_markdown(tmp_path: Path) -> None:
     assert "**environmental failure**" in markdown
     assert "baseline test command failed" in markdown
     assert '["git", "rev-parse", "HEAD"]' in markdown
+    assert "not JSON" in markdown
+    assert "proposal is not valid JSON" in markdown

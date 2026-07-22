@@ -9,6 +9,7 @@ def test_no_arguments_prints_help(capsys: pytest.CaptureFixture[str]) -> None:
 
     output = capsys.readouterr().out
     assert "trusted Python repositories" in output
+    assert "analyze" in output
 
 
 def test_version_flag_prints_package_version(

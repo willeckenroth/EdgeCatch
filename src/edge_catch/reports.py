@@ -310,4 +310,7 @@ def _render_commands(title: str, commands: tuple[CommandResult, ...]) -> list[st
 
 
 def _indent(text: str) -> str:
-    return "\n".join(f"    {line}" for line in text.rstrip("\n").split("\n"))
+    return "\n".join(
+        f"    {line}" if line else ""
+        for line in text.rstrip("\n").split("\n")
+    )

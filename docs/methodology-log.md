@@ -123,4 +123,16 @@ correct by default.
   environment-creation and tooling-install path.
 - The test command must begin with `python -m pytest`, making the coverage
   wrapping rule explicit instead of pretending arbitrary commands are supported.
-- Focused verification and the real-repository run are pending.
+- All 40 local tests and public Python 3.11/3.12 CI checks passed.
+- The first pinned humanize pass exercised the real environment path: both
+  environment commands, editable test-extra installation, baseline suite, and
+  coverage export passed. It measured 541/549 lines and 207/216 branches, with
+  line 175 and branch `174 -> 175` missing inside `intcomma`.
+- A deliberate invalid placeholder produced and preserved the coverage-informed
+  prompt without executing generated code.
+- The first inference request used GitHub's documented endpoint, API version,
+  `openai/gpt-4.1`, temperature 0, and JSON-object response mode. GitHub rejected
+  it with HTTP 401 because the stored CLI token lacks Models inference access;
+  no model output was generated. The available browser session was also signed
+  out, so work paused for explicit user authentication rather than requesting or
+  exposing a credential. See the [official inference documentation](https://docs.github.com/en/rest/models/inference).

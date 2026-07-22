@@ -1,0 +1,2 @@
+This deliberately invalid response is used only to produce the coverage-informed
+prompt before any generated candidate code is executed.

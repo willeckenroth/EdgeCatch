@@ -1,0 +1,9 @@
+[repository]
+source_roots = ["src/humanize"]
+
+[commands]
+install = [
+    ["python", "-m", "pip", "install", "-e", ".[tests]"],
+]
+test = ["python", "-m", "pytest", "-q"]
+timeout_seconds = 120

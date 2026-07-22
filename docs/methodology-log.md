@@ -62,3 +62,15 @@ correct by default.
   verifies the resolved commit, preserves each Git command result, and removes
   the workspace when its context ends.
 - Focused verification and human review of this slice are pending.
+
+## 2026-07-22: versioned evidence reports
+
+- Will completed the exact-commit temporary-repository teach-back before report
+  implementation began.
+- Codex drafted small evidence dataclasses for repository preparation, baseline,
+  coverage summary, proposal provenance, validation, and the final analysis.
+- `report.json` is the versioned source of truth. `report.md` is rendered from
+  the same in-memory report rather than assembled through a second data path.
+- Missing stages remain explicit null values, while commands preserve arguments,
+  working directory, output, errors, exit status, duration, and timeout state.
+- Focused verification and human review of this slice are pending.

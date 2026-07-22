@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path, PurePath
 from typing import Literal
 
 from edge_catch.config import RepositoryConfig, load_repository_config
+from edge_catch.coverage_data import (
+    COVERAGE_JSON_PATH,
+    build_coverage_test_command,
+    coverage_report_command,
+    load_coverage_data,
+)
+from edge_catch.environments import create_target_environment
 from edge_catch.prompts import PROMPT_VERSION, build_proposal_prompt
 from edge_catch.proposals import parse_proposal
 from edge_catch.reports import (
@@ -39,7 +47,11 @@ class RecordedAnalysisRequest:
     created_at_utc: str | None = None
 
 
-def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
+def analyze_recorded(
+    request: RecordedAnalysisRequest,
+    *,
+    existing_environment: Mapping[str, str] | None = None,
+) -> AnalysisReport:
     """Run the recorded-proposal pipeline and return all collected evidence."""
     config = load_repository_config(request.config_path)
     created_at = request.created_at_utc or _current_utc_time()
@@ -59,13 +71,37 @@ def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
                 error=prepared.error,
             )
 
-        installation_commands = _run_installation_commands(config, prepared.workspace)
+        if existing_environment is None:
+            environment_commands, environment = create_target_environment(
+                prepared.workspace,
+                timeout_seconds=config.timeout_seconds,
+            )
+        else:
+            environment_commands = ()
+            environment = dict(existing_environment)
         baseline = BaselineEvidence(
-            environment_commands=(),
-            installation_commands=installation_commands,
+            environment_commands=environment_commands,
+            installation_commands=(),
             test_command=None,
+            coverage_report_command=None,
             coverage=None,
         )
+        if any(not command.succeeded for command in environment_commands):
+            return _report(
+                created_at=created_at,
+                status="failed",
+                repository=repository,
+                baseline=baseline,
+                classification="environmental failure",
+                error="target environment preparation failed",
+            )
+
+        installation_commands = _run_installation_commands(
+            config,
+            prepared.workspace,
+            environment,
+        )
+        baseline = replace(baseline, installation_commands=installation_commands)
         failed_installation = next(
             (command for command in installation_commands if not command.succeeded),
             None,
@@ -81,9 +117,13 @@ def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
             )
 
         baseline_command = run_command(
-            config.test_command,
+            build_coverage_test_command(
+                config.test_command,
+                config.source_roots,
+            ),
             cwd=prepared.workspace,
             timeout_seconds=config.timeout_seconds,
+            env=environment,
         )
         baseline = replace(baseline, test_command=baseline_command)
         if not baseline_command.succeeded:
@@ -95,6 +135,40 @@ def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
                 classification="environmental failure",
                 error="baseline test command failed",
             )
+
+        report_command = run_command(
+            coverage_report_command(),
+            cwd=prepared.workspace,
+            timeout_seconds=config.timeout_seconds,
+            env=environment,
+        )
+        baseline = replace(baseline, coverage_report_command=report_command)
+        if not report_command.succeeded:
+            return _report(
+                created_at=created_at,
+                status="failed",
+                repository=repository,
+                baseline=baseline,
+                classification="environmental failure",
+                error="baseline coverage report command failed",
+            )
+        try:
+            coverage_data = load_coverage_data(
+                prepared.workspace / COVERAGE_JSON_PATH
+            )
+        except (OSError, ValueError) as error:
+            return _report(
+                created_at=created_at,
+                status="failed",
+                repository=repository,
+                baseline=baseline,
+                classification="environmental failure",
+                error=(
+                    "baseline coverage parsing failed: "
+                    f"{type(error).__name__}: {error}"
+                ),
+            )
+        baseline = replace(baseline, coverage=coverage_data.summary)
 
         try:
             source_path = _path_inside_repository(
@@ -112,7 +186,10 @@ def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
             )
         target = replace(target, source_path=request.target_file)
 
-        prompt = build_proposal_prompt(target)
+        prompt = build_proposal_prompt(
+            target,
+            coverage_data.for_file(request.target_file),
+        )
         proposal_evidence = _load_proposal_evidence(request, prompt)
         if proposal_evidence.proposal is None:
             return _report(
@@ -130,6 +207,7 @@ def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
                 proposal_evidence.proposal.test_code,
                 prepared.workspace,
                 config,
+                environment,
             )
         except (OSError, ValueError) as error:
             return _report(
@@ -156,6 +234,7 @@ def analyze_recorded(request: RecordedAnalysisRequest) -> AnalysisReport:
 def _run_installation_commands(
     config: RepositoryConfig,
     workspace: Path,
+    environment: dict[str, str],
 ) -> tuple[CommandResult, ...]:
     results: list[CommandResult] = []
     for command in config.install_commands:
@@ -163,6 +242,7 @@ def _run_installation_commands(
             command,
             cwd=workspace,
             timeout_seconds=config.timeout_seconds,
+            env=environment,
         )
         results.append(result)
         if not result.succeeded:

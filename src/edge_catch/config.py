@@ -34,6 +34,8 @@ def load_repository_config(path: Path) -> RepositoryConfig:
         "commands.install",
     )
     test_command = _require_command(commands.get("test"), "commands.test")
+    if test_command[:3] != ("python", "-m", "pytest"):
+        raise ValueError("commands.test must begin with ['python', '-m', 'pytest']")
     timeout_seconds = _require_positive_number(
         commands.get("timeout_seconds", 120),
         "commands.timeout_seconds",

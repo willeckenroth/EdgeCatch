@@ -50,6 +50,7 @@ class BaselineEvidence:
     environment_commands: tuple[CommandResult, ...]
     installation_commands: tuple[CommandResult, ...]
     test_command: CommandResult | None
+    coverage_report_command: CommandResult | None
     coverage: CoverageSummary | None
 
 
@@ -76,8 +77,10 @@ class ValidationEvidence:
     collection_command: CommandResult | None
     candidate_command: CommandResult | None
     full_suite_command: CommandResult | None
+    coverage_report_command: CommandResult | None
     repeat_command: CommandResult | None
     coverage_after: CoverageSummary | None
+    coverage_error: str | None
     original_repository_unchanged: bool | None
 
 
@@ -153,6 +156,13 @@ def render_markdown(report: AnalysisReport) -> str:
                 _render_commands(
                     "Baseline test command",
                     (report.baseline.test_command,),
+                )
+            )
+        if report.baseline.coverage_report_command is not None:
+            lines.extend(
+                _render_commands(
+                    "Baseline coverage report command",
+                    (report.baseline.coverage_report_command,),
                 )
             )
         if report.baseline.coverage is not None:
@@ -237,6 +247,7 @@ def render_markdown(report: AnalysisReport) -> str:
                 f"- Candidate path: `{validation.candidate_path}`",
                 f"- Parsed: `{validation.parsed}`",
                 f"- Parse error: `{validation.parse_error}`",
+                f"- Coverage error: `{validation.coverage_error}`",
                 "- Original repository unchanged: "
                 f"`{validation.original_repository_unchanged}`",
             ]
@@ -245,6 +256,7 @@ def render_markdown(report: AnalysisReport) -> str:
             ("Collection command", validation.collection_command),
             ("Candidate command", validation.candidate_command),
             ("Full-suite command", validation.full_suite_command),
+            ("Coverage report command", validation.coverage_report_command),
             ("Repeat command", validation.repeat_command),
         ):
             if command is not None:

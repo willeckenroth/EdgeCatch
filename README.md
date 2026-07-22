@@ -6,9 +6,10 @@ edge-case tests in trusted Python repositories that use pytest.
 The project is at the walking-skeleton stage. A recorded-proposal pipeline now
 prepares an exact commit, runs the baseline suite, extracts an explicit AST
 target, validates a candidate test, and writes versioned JSON and Markdown
-reports. Dedicated target environments, coverage analysis, automatic target
-ranking, and live AI calls are not implemented yet. The binding delivery
-requirements are in [`CONTRACT.md`](CONTRACT.md).
+reports. Target commands run in a dedicated virtual environment, and baseline
+and post-candidate branch coverage are recorded. Automatic target ranking and
+live AI calls are not implemented yet. The binding delivery requirements are in
+[`CONTRACT.md`](CONTRACT.md).
 
 ## Development setup
 

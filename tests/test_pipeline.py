@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -45,11 +46,11 @@ def make_fixture_repository(tmp_path: Path) -> tuple[Path, str]:
 def write_config(tmp_path: Path) -> Path:
     config = tmp_path / "repository.toml"
     config.write_text(
-        f'''[repository]
+        '''[repository]
 source_roots = ["."]
 
 [commands]
-test = [{json.dumps(sys.executable)}, "-m", "pytest", "-q"]
+test = ["python", "-m", "pytest", "-q"]
 timeout_seconds = 10
 ''',
         encoding="utf-8",
@@ -93,9 +94,18 @@ def request(
     )
 
 
+def current_test_environment() -> dict[str, str]:
+    environment = dict(os.environ)
+    environment["PATH"] = os.pathsep.join(
+        [str(Path(sys.executable).parent), environment.get("PATH", "")]
+    )
+    return environment
+
+
 def test_recorded_pipeline_runs_end_to_end_and_preserves_original(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository, commit = make_fixture_repository(tmp_path)
     config = write_config(tmp_path)
@@ -106,18 +116,25 @@ def test_recorded_pipeline_runs_end_to_end_and_preserves_original(
         "    assert is_positive(0) is False\n",
     )
 
-    report = analyze_recorded(request(repository, commit, config, proposal))
+    report = analyze_recorded(
+        request(repository, commit, config, proposal),
+        existing_environment=current_test_environment(),
+    )
     json_path, _ = write_reports(report, tmp_path / "output")
 
-    assert report.status == "completed"
+    assert report.status == "completed", report
     assert report.classification == "unreviewed"
     assert report.baseline is not None
     assert report.baseline.test_command is not None
     assert report.baseline.test_command.succeeded
+    assert report.baseline.coverage_report_command is not None
+    assert report.baseline.coverage_report_command.succeeded
+    assert report.baseline.coverage is not None
     assert report.target is not None
     assert report.target.qualified_name == "is_positive"
     assert report.proposal is not None
     assert report.proposal.parse_error is None
+    assert "Missing lines inside target:" in report.proposal.prompt
     assert report.validation is not None
     assert report.validation.parsed
     assert report.validation.collection_command is not None
@@ -126,6 +143,9 @@ def test_recorded_pipeline_runs_end_to_end_and_preserves_original(
     assert report.validation.candidate_command.succeeded
     assert report.validation.full_suite_command is not None
     assert report.validation.full_suite_command.succeeded
+    assert report.validation.coverage_report_command is not None
+    assert report.validation.coverage_report_command.succeeded
+    assert report.validation.coverage_after is not None
     assert report.validation.repeat_command is not None
     assert report.validation.repeat_command.succeeded
     assert not (repository / "tests" / "test_edge_catch_candidate.py").exists()
@@ -137,6 +157,13 @@ def test_recorded_pipeline_runs_end_to_end_and_preserves_original(
     )
 
     cli_output = tmp_path / "cli-output"
+    monkeypatch.setattr(
+        "edge_catch.cli.analyze_recorded",
+        lambda cli_request: analyze_recorded(
+            cli_request,
+            existing_environment=current_test_environment(),
+        ),
+    )
     assert (
         main(
             [
@@ -167,9 +194,12 @@ def test_pipeline_reports_invalid_candidate_syntax(tmp_path: Path) -> None:
     config = write_config(tmp_path)
     proposal = write_proposal(tmp_path, "def broken(:\n    pass\n")
 
-    report = analyze_recorded(request(repository, commit, config, proposal))
+    report = analyze_recorded(
+        request(repository, commit, config, proposal),
+        existing_environment=current_test_environment(),
+    )
 
-    assert report.status == "completed"
+    assert report.status == "completed", report
     assert report.classification == "invalid generation"
     assert report.validation is not None
     assert not report.validation.parsed
@@ -184,9 +214,12 @@ def test_pipeline_preserves_malformed_model_response(tmp_path: Path) -> None:
     proposal = tmp_path / "malformed.json"
     proposal.write_text("not JSON", encoding="utf-8")
 
-    report = analyze_recorded(request(repository, commit, config, proposal))
+    report = analyze_recorded(
+        request(repository, commit, config, proposal),
+        existing_environment=current_test_environment(),
+    )
 
-    assert report.status == "completed"
+    assert report.status == "completed", report
     assert report.classification == "invalid generation"
     assert report.proposal is not None
     assert report.proposal.raw_response == "not JSON"

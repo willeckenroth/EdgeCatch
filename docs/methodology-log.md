@@ -50,7 +50,8 @@ correct by default.
   not contain its own copy of setuptools. The normal isolated build initially
   hit the execution sandbox's network restriction, then succeeded with approved
   access and included both new modules in the source and wheel distributions.
-- Human review, focused verification, and teach-back of this slice are pending.
+- Will completed the AST/proposal teach-back on July 21. Focused tests and public
+  Python 3.11/3.12 CI passed before the next slice began.
 
 ## 2026-07-21: exact temporary repository preparation
 
@@ -61,7 +62,21 @@ correct by default.
 - Preparation creates an independent clone, checks out the requested commit,
   verifies the resolved commit, preserves each Git command result, and removes
   the workspace when its context ends.
-- Focused verification and human review of this slice are pending.
+- Will completed the repository-preparation teach-back on July 22. Focused tests
+  and public Python 3.11/3.12 CI passed before reporting work began.
+
+## 2026-07-22: versioned evidence reports
+
+- Will completed the exact-commit temporary-repository teach-back before report
+  implementation began.
+- Codex drafted small evidence dataclasses for repository preparation, baseline,
+  coverage summary, proposal provenance, validation, and the final analysis.
+- `report.json` is the versioned source of truth. `report.md` is rendered from
+  the same in-memory report rather than assembled through a second data path.
+- Missing stages remain explicit null values, while commands preserve arguments,
+  working directory, output, errors, exit status, duration, and timeout state.
+- Will completed the report teach-back on July 22. Focused tests and public
+  Python 3.11/3.12 CI passed before pipeline composition began.
 
 ## 2026-07-22: deterministic recorded-proposal pipeline
 
@@ -89,14 +104,23 @@ correct by default.
   unreviewed until Will defines and applies the oracle policy.
 - Focused verification and human review of this slice are pending.
 
-## 2026-07-22: versioned evidence reports
+## 2026-07-22: target environment and branch coverage
 
-- Will completed the exact-commit temporary-repository teach-back before report
-  implementation began.
-- Codex drafted small evidence dataclasses for repository preparation, baseline,
-  coverage summary, proposal provenance, validation, and the final analysis.
-- `report.json` is the versioned source of truth. `report.md` is rendered from
-  the same in-memory report rather than assembled through a second data path.
-- Missing stages remain explicit null values, while commands preserve arguments,
-  working directory, output, errors, exit status, duration, and timeout state.
-- Focused verification and human review of this slice are pending.
+- The humanize preflight pinned commit
+  `c3a124cdeb272d7f63bc0aa66f79c6fbafd2fc6d` and found that its test extra now
+  requires pytest 9, while Edge Catch development currently uses pytest 8. This
+  confirmed the need for a separate target environment.
+- Coverage.py is the first runtime dependency. Edge Catch wraps the configured
+  `python -m pytest` arguments in branch coverage, exports versioned JSON, and
+  strictly parses totals plus missing lines and branches for the prompt.
+- The first environment attempt used `venv --system-site-packages`, but a venv
+  created from another venv sees the base interpreter's global packages rather
+  than the parent venv. The baseline failed with `No module named coverage`.
+- That assumption was removed. A real target environment now installs the exact
+  Edge Catch coverage.py version through a separately recorded pip command.
+- Network-free integration tests use an explicitly supplied existing test
+  environment. The pinned humanize run is responsible for exercising the real
+  environment-creation and tooling-install path.
+- The test command must begin with `python -m pytest`, making the coverage
+  wrapping rule explicit instead of pretending arbitrary commands are supported.
+- Focused verification and the real-repository run are pending.

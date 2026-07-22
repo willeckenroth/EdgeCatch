@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from pathlib import Path
 
 from edge_catch.config import RepositoryConfig
+from edge_catch.coverage_data import (
+    COVERAGE_JSON_PATH,
+    build_coverage_test_command,
+    coverage_report_command,
+    load_coverage_data,
+)
 from edge_catch.reports import Classification, ValidationEvidence
 from edge_catch.runner import run_command
 
@@ -14,6 +21,7 @@ def validate_candidate(
     test_code: str,
     workspace: Path,
     config: RepositoryConfig,
+    environment: Mapping[str, str],
 ) -> ValidationEvidence:
     """Parse and run a candidate only inside the temporary repository."""
     candidate_path = _candidate_path(workspace)
@@ -28,8 +36,10 @@ def validate_candidate(
             collection_command=None,
             candidate_command=None,
             full_suite_command=None,
+            coverage_report_command=None,
             repeat_command=None,
             coverage_after=None,
+            coverage_error=None,
             original_repository_unchanged=True,
         )
 
@@ -38,27 +48,53 @@ def validate_candidate(
         (*config.test_command, "--collect-only", relative_candidate),
         cwd=workspace,
         timeout_seconds=config.timeout_seconds,
+        env=environment,
     )
     candidate = None
     full_suite = None
     repeat = None
     if collection.succeeded:
         candidate = run_command(
-            (*config.test_command, relative_candidate),
+            build_coverage_test_command(
+                config.test_command,
+                config.source_roots,
+                relative_candidate,
+            ),
             cwd=workspace,
             timeout_seconds=config.timeout_seconds,
+            env=environment,
         )
     if candidate is not None and candidate.succeeded:
         full_suite = run_command(
-            config.test_command,
+            build_coverage_test_command(
+                config.test_command,
+                config.source_roots,
+            ),
             cwd=workspace,
             timeout_seconds=config.timeout_seconds,
+            env=environment,
         )
+    report = None
+    coverage = None
+    coverage_error = None
     if full_suite is not None and full_suite.succeeded:
+        report = run_command(
+            coverage_report_command(),
+            cwd=workspace,
+            timeout_seconds=config.timeout_seconds,
+            env=environment,
+        )
+        if report.succeeded:
+            try:
+                coverage = load_coverage_data(workspace / COVERAGE_JSON_PATH).summary
+            except (OSError, ValueError) as error:
+                coverage_error = f"{type(error).__name__}: {error}"
+    if report is not None and report.succeeded and coverage_error is None:
         repeat = run_command(
             (*config.test_command, relative_candidate),
             cwd=workspace,
             timeout_seconds=config.timeout_seconds,
+            env=environment,
         )
 
     return ValidationEvidence(
@@ -68,8 +104,10 @@ def validate_candidate(
         collection_command=collection,
         candidate_command=candidate,
         full_suite_command=full_suite,
+        coverage_report_command=report,
         repeat_command=repeat,
-        coverage_after=None,
+        coverage_after=coverage,
+        coverage_error=coverage_error,
         original_repository_unchanged=True,
     )
 
@@ -83,11 +121,19 @@ def classify_validation(validation: ValidationEvidence) -> Classification:
         validation.collection_command,
         validation.candidate_command,
         validation.full_suite_command,
+        validation.coverage_report_command,
         validation.repeat_command,
     )
     if any(
         command is not None and (command.timed_out or command.launch_error is not None)
         for command in commands
+    ):
+        return "environmental failure"
+    if validation.coverage_error is not None:
+        return "environmental failure"
+    if (
+        validation.coverage_report_command is not None
+        and not validation.coverage_report_command.succeeded
     ):
         return "environmental failure"
     if (

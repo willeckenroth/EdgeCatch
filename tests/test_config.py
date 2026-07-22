@@ -88,3 +88,19 @@ timeout_seconds = 0
 
     with pytest.raises(ValueError, match="positive number"):
         load_repository_config(path)
+
+
+def test_rejects_non_pytest_test_command(tmp_path: Path) -> None:
+    path = write_config(
+        tmp_path,
+        '''
+[repository]
+source_roots = ["src"]
+
+[commands]
+test = ["tox", "-e", "py"]
+''',
+    )
+
+    with pytest.raises(ValueError, match="must begin with"):
+        load_repository_config(path)
